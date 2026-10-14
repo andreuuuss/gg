@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Doom: Ecología Táctica - Corregido</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        body {
+            margin: 0;
+            background: #080808;
+            color: #c0c0c0;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            border: 3px solid #333;
+            background: #000;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.9);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            background: #121212;
+            cursor: crosshair;
+            outline: none;
+        }
+
+        #hud-panel {
+            width: 100%;
+            max-width: 800px;
+            background: #161616;
+            border-top: 3px solid #333;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            font-size: clamp(9px, 2vw, 12px);
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #dcdcdc;
+            gap: 4px;
+        }
+
+        .hud-item span {
+            color: #ff3333;
+        }
+
+        /* Controles táctiles en pantalla para móviles */
+        #mobile-controls {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            background: #111;
+            padding: 12px;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 2px solid #222;
+        }
+
+        .d-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 50px);
+            grid-template-rows: repeat(2, 50px);
+            gap: 6px;
+        }
+
+        .control-btn {
+            background: #222;
+            color: #fff;
+            border: 2px solid #444;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .control-btn:active {
+            background: #555;
+            border-color: #ff3333;
+        }
+
+        #btn-up { grid-column: 2; grid-row: 1; }
+        #btn-left { grid-column: 1; grid-row: 2; }
+        #btn-down { grid-column: 2; grid-row: 2; }
+        #btn-right { grid-column: 3; grid-row: 2; }
+
+        .action-pad {
+            display: flex;
+            gap: 10px;
+        }
+
+        .fire-btn {
+            background: #7a1c1c;
+            color: #fff;
+            border: 2px solid #a02020;
+            padding: 15px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .fire-btn:active {
+            background: #a02020;
+        }
+
+        /* Modales */
+        #name-modal, #quiz-modal {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 5, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 15px;
+        }
+
+        #quiz-modal {
+            display: none;
+        }
+
+        .modal-container {
+            background: #141414;
+            border: 3px solid #7a1c1c;
+            width: 100%;
+            max-width: 500px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: inset 0 0 15px rgba(255,0,0,0.3);
+        }
+
+        .modal-container h2 {
+            color: #ff5555;
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            background: #000;
+            border: 2px solid #444;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            margin: 12px 0;
+            text-align: center;
+        }
+
+        .platform-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .platform-btn {
+            flex: 1;
+            background: #1a1a1a;
+            color: #aaa;
+            border: 2px solid #444;
+            padding: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+        .platform-btn.selected {
+            background: #7a1c1c;
+            color: #fff;
+            border-color: #ff3333;
+        }
+
+        .modal-btn {
+            background: #7a1c1c;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .modal-btn:hover {
+            background: #9e2727;
+        }
+
+        .quiz-header {
+            background: #7a1c1c;
+            color: #fff;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #timer-display {
+            color: #ffff00;
+        }
+
+        .quiz-question {
+            font-size: 14px;
+            line-height: 1.4;
+            color: #f0f0f0;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .option-btn {
+            display: block;
+            width: 100%;
+            background: #1a1a1a;
+            color: #dcdcdc;
+            border: 2px solid #333;
+            padding: 9px 12px;
+            margin: 6px 0;
+            text-align: left;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 13px;
+            transition: 0.1s;
+        }
+
+        .option-btn:hover {
+            background: #2a2a2a;
+            border-color: #a02020;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-wrapper">
+        <canvas id="gameCanvas" width="800" height="400" tabindex="0"></canvas>
+        
+        <!-- Modal Ingreso de Nombre y Dispositivo -->
+        <div id="name-modal">
+            <div class="modal-container">
+                <h2>DOOM: ECOLOGÍA TÁCTICA</h2>
+                <p style="font-size: 13px; color: #aaa;">Introduce tu nombre de cadete:</p>
+                <input type="text" id="player-name-input" class="modal-input" placeholder="Nombre" maxlength="15" autocomplete="off">
+                
+                <p style="font-size: 13px; color: #aaa; margin-top: 15px;">Selecciona tu dispositivo:</p>
+                <div class="platform-selector">
+                    <button class="platform-btn selected" id="btn-pc" type="button">Computadora</button>
+                    <button class="platform-btn" id="btn-mobile" type="button">Teléfono</button>
+                </div>
+
+                <button class="modal-btn" id="start-game-btn">INICIAR MISIÓN</button>
+            </div>
+        </div>
+
+        <!-- Modal de Evaluaciones Ecológicas -->
+        <div id="quiz-modal">
+            <div class="modal-container" style="max-width: 600px;">
+                <div class="quiz-header">
+                    <span>EVALUACIÓN ECOLÓGICA (SUTTON & HARMON)</span>
+                    <span>TIEMPO: <span id="timer-display">5</span>s</span>
+                </div>
+                <div id="quiz-question" class="quiz-question">Cargando pregunta...</div>
+                <div id="quiz-options"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="hud-panel">
+        <div class="hud-item">Cadete: <span id="hud-name">-</span></div>
+        <div class="hud-item">Modo: <span id="hud-mode">PC</span></div>
+        <div class="hud-item">Puntos: <span id="hud-points">0</span></div>
+        <div class="hud-item">Nivel: <span id="hud-level">1</span></div>
+        <div class="hud-item">Bajas: <span id="hud-score">0/5</span></div>
+        <div class="hud-item">Correctas: <span id="hud-correct">0</span></div>
+        <div class="hud-item">Errores: <span id="hud-errors">0</span></div>
+        <div class="hud-item">Reinicios: <span id="hud-resets">0</span></div>
+        <div class="hud-item">Munición: <span id="hud-ammo">5/5</span></div>
+        <div class="hud-item">Salud: <span id="hud-health">100%</span></div>
+    </div>
+
+    <!-- Controles táctiles flotantes para teléfono -->
+    <div id="mobile-controls">
+        <div class="d-pad">
+            <button class="control-btn" id="btn-up">↑</button>
+            <button class="control-btn" id="btn-left">←</button>
+            <button class="control-btn" id="btn-down">↓</button>
+            <button class="control-btn" id="btn-right">→</button>
+        </div>
+        <div class="action-pad">
+            <button class="fire-btn" id="btn-fire">FUEGO</button>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            let playerName = "Cadete";
+            let selectedPlatform = "pc";
+            let points = 0;
+            let level = 1;
+            let score = 0; 
+            let correctAnswers = 0;
+            let errorCount = 0;
+            let resetCount = 0;
+            let ammo = 5;
+            let health = 100;
+            let gameStarted = false;
+            let isPaused = false;
+            let quizTimer = 5;
+            let timerInterval = null;
+
+            let player = { x: 400, y: 200, size: 12, speed: 4 };
+
+            const btnPc = document.getElementById('btn-pc');
+            const btnMobile = document.getElementById('btn-mobile');
+
+            btnPc.addEventListener('click', () => {
+                selectedPlatform = 'pc';
+                btnPc.classList.add('selected');
+                btnMobile.classList.remove('selected');
+            });
+
+            btnMobile.addEventListener('click', () => {
+                selectedPlatform = 'mobile';
+                btnMobile.classList.add('selected');
+                btnPc.classList.remove('selected');
+            });
+
+            document.getElementById('start-game-btn').addEventListener('click', startGame);
+            document.getElementById('player-name-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') startGame();
+            });
+
+            function startGame() {
+                const inputVal = document.getElementById('player-name-input').value.trim();
+                if (inputVal !== "") {
+                    playerName = inputVal;
+                }
+                document.getElementById('hud-name').innerText = playerName;
+                document.getElementById('hud-mode').innerText = selectedPlatform === 'mobile' ? 'MÓVIL' : 'PC';
+                
+                if (selectedPlatform === 'mobile') {
+                    document.getElementById('mobile-controls').style.display = 'flex';
+                } else {
+                    document.getElementById('mobile-controls').style.display = 'none';
+                }
+
+                document.getElementById('name-modal').style.display = 'none';
+                gameStarted = true;
+                medkitSpawnTimer = Date.now(); // Inicia el conteo del botiquín al arrancar
+                canvas.focus();
+                loop();
+            }
+
+            let keys = {};
+            window.addEventListener('keydown', e => {
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                    e.preventDefault();
+                }
+                keys[e.code] = true;
+                keys[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', e => {
+                keys[e.code] = false;
+                keys[e.key.toLowerCase()] = false;
+            });
+
+            function setupTouchControl(btnId, codeKey, charKey) {
+                const btn = document.getElementById(btnId);
+                if (!btn) return;
+
+                ['touchstart', 'mousedown'].forEach(evt => {
+                    btn.addEventListener(evt, (e) => {
+                        e.preventDefault();
+                        keys[codeKey] = true;
+                        keys[charKey] = true;
+                    });
+                });
+
+                ['touchend', 'mouseup', 'mouseleave'].forEach(evt => {
+                    btn.addEventListener(evt, (e) => {
+                        e.preventDefault();
+                        keys[codeKey] = false;
+                        keys[charKey] = false;
+                    });
+                });
+            }
+
+            setupTouchControl('btn-up', 'ArrowUp', 'w');
+            setupTouchControl('btn-down', 'ArrowDown', 's');
+            setupTouchControl('btn-left', 'ArrowLeft', 'a');
+            setupTouchControl('btn-right', 'ArrowRight', 'd');
+
+            const fireBtn = document.getElementById('btn-fire');
+            if (fireBtn) {
+                ['touchstart', 'click'].forEach(evt => {
+                    fireBtn.addEventListener(evt, (e) => {
+                        e.preventDefault();
+                        if (!gameStarted || isPaused) return;
+                        if (enemies.length > 0) {
+                            handleShoot(enemies[0].x, enemies[0].y);
+                        } else {
+                            handleShoot(player.x + 100, player.y);
+                        }
+                    });
+                });
+            }
+
+            canvas.addEventListener('click', (e) => {
+                if (!gameStarted || isPaused || selectedPlatform === 'mobile') return;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const targetX = (e.clientX - rect.left) * scaleX;
+                const targetY = (e.clientY - rect.top) * scaleY;
+                handleShoot(targetX, targetY);
+            });
+
+            function handleShoot(tx, ty) {
+                if (ammo > 0) {
+                    ammo--;
+                    fireBullet(tx, ty);
+                } else {
+                    triggerQuiz(); 
+                }
+            }
+
+            let activeMedkit = null;
+            let medkitSpawnTimer = Date.now();
+            let medkitMoveTimer = 0;
+
+            function spawnMedkit() {
+                activeMedkit = {
+                    x: Math.random() * (canvas.width - 80) + 40,
+                    y: Math.random() * (canvas.height - 80) + 40
+                };
+                medkitMoveTimer = Date.now();
+            }
+
+            const questionBank = [
+                { q: "¿Cómo se define el tipo de energía que utiliza el ser humano para mantener sus procesos corporales y vitales internos?", options: ["a) Energía externa", "b) Energía nuclear", "c) Energía interna", "d) Energía exógena"], correct: 2 },
+                { q: "¿Cuál era el consumo energético interno diario estimado de un ser humano durante el 99% de su historia como cazador y recolector?", options: ["a) 10,000 C por día", "b) 2,000 C por día", "c) 50,000 C por día", "d) 500 C por día"], correct: 1 },
+                { q: "¿Qué término se emplea en el texto para describir toda la energía que consume el hombre fuera de su propio cuerpo (en máquinas, cultura e instrumentos)?", options: ["a) Energía interna", "b) Energía trófica", "c) Energía neta", "d) Energía externa"], correct: 3 },
+                { q: "¿Aproximadamente cuánta energía consume directa o indirectamente por día un ciudadano promedio en los Estados Unidos (hombre tecnológico)?", options: ["a) 2,000 C por día", "b) 10,000 C por día", "c) 50,000 C por día", "d) 200,000 C por día"], correct: 3 },
+                { q: "¿Qué porcentaje de la población mundial (industrializada) consume cerca del 80% de la energía del mundo según los datos del texto?", options: ["a) El 6%", "b) El 30%", "c) El 50%", "d) El 90%"], correct: 0 },
+                { q: "¿Cuál es el principal combustible o fuente en la que se basó históricamente el incremento masivo de la energía externa en la sociedad moderna?", options: ["a) Energía geotérmica", "b) Combustibles fósiles (carbón, petróleo y gas)", "c) Energía solar directa", "d) Fuerza hidroeléctrica exclusiva"], correct: 1 },
+                { q: "¿Cómo define la ecología la unidad básica de interacción entre los organismos vivos y su ambiente inanimado?", options: ["a) Población", "b) Ecosistema", "c) Especie", "d) Biosfera"], correct: 1 },
+                { q: "¿Qué nombre recibe el proceso direccional mediante el cual las comunidades evolucionan a través del tiempo desde interacciones simples hasta complejas?", options: ["a) Sucesión ecológica", "b) Evolución genética", "c) Regresión trófica", "d) Selección artificial"], correct: 0 },
+                { q: "¿Qué papel fundamental desempeñan los reductores (bacterias y hongos) en la estructura y función de los ecosistemas?", options: ["a) Transformar luz solar en azúcares", "b) Consumir tejido muerto y reincorporar compuestos a los productores", "c) Consumir carnívoros vivos", "d) Detener flujo térmico"], correct: 1 },
+                { q: "¿Qué indica la ley del diez por ciento respecto a la transferencia de energía entre niveles tróficos?", options: ["a) Que el 90% pasa al nivel superior", "b) Que solamente alrededor del 10% de la energía de un nivel pasa al nivel trófico inmediato superior", "c) Que la energía se multiplica", "d) Que los productores capturan 10% de la luz"], correct: 1 },
+                { q: "¿Qué fenómeno ecológico ilustra la concentración progresiva de sustancias persistentes (como el DDT) en la cadena alimenticia?", options: ["a) Sucesión ecológica", "b) Homeostasis", "c) Magnificación biológica", "d) Fotosíntesis neta"], correct: 2 },
+                { q: "¿Cómo se describen los ecosistemas urbanos dentro de la ecología humana?", options: ["a) Sistemas cerrados", "b) Sistemas abiertos altamente concentrados con entradas masivas de recursos y grandes salidas de calor y desechos", "c) Áreas agrícolas", "d) Zonas sin impacto"], correct: 1 },
+                { q: "¿Cuál es el contaminante final inevitable al que se degrada toda la energía externa generada por actividades humanas (2da ley de la termodinámica)?", options: ["a) Oxígeno puro", "b) Calor", "c) Agua destilada", "d) Nitrógeno líquido"], correct: 1 },
+                { q: "¿Qué papel juegan los subsidios energéticos externos en la agricultura moderna?", options: ["a) Reducen la producción", "b) Elevan temporalmente la producción de alimentos, pero ocultan costos y generan impactos ambientales", "c) Sustituyen por completo la luz solar", "d) Eliminan el agua"], correct: 1 }
+            ];
+
+            let enemies = [];
+            let bullets = [];
+
+            function spawnEnemy() {
+                let side = Math.floor(Math.random() * 4);
+                let x, y;
+                if (side === 0) { x = Math.random() * canvas.width; y = -20; }
+                else if (side === 1) { x = Math.random() * canvas.width; y = canvas.height + 20; }
+                else if (side === 2) { x = -20; y = Math.random() * canvas.height; }
+                else { x = canvas.width + 20; y = Math.random() * canvas.height; }
+
+                let enemySpeed, enemyHP;
+
+                if (selectedPlatform === 'mobile') {
+                    enemySpeed = 1.6 + (level * 0.65);
+                    enemyHP = Math.floor(1 + (level - 1) * 0.8);
+                } else {
+                    enemySpeed = 1.2 + (level * 0.35);
+                    enemyHP = Math.floor(1 + (level - 1) * 0.4);
+                }
+
+                enemies.push({ x: x, y: y, size: 11, speed: enemySpeed, hp: enemyHP, maxHp: enemyHP });
+            }
+
+            setInterval(() => {
+                if (!gameStarted || isPaused) return;
+                let maxEnemies = selectedPlatform === 'mobile' ? 5 + level : 4 + level;
+                if (enemies.length < maxEnemies) {
+                    spawnEnemy();
+                }
+            }, selectedPlatform === 'mobile' ? 1200 : 1500);
+
+            function fireBullet(tx, ty) {
+                let dx = tx - player.x;
+                let dy = ty - player.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist === 0) dist = 1;
+                
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: (dx / dist) * 11,
+                    vy: (dy / dist) * 11
+                });
+            }
+
+            function triggerQuiz() {
+                isPaused = true;
+                quizTimer = 5;
+                const timerEl = document.getElementById('timer-display');
+                if(timerEl) timerEl.innerText = quizTimer;
+                document.getElementById('quiz-modal').style.display = 'flex';
+                
+                let qObj = questionBank[Math.floor(Math.random() * questionBank.length)];
+                document.getElementById('quiz-question').innerText = qObj.q;
+                let optionsDiv = document.getElementById('quiz-options');
+                optionsDiv.innerHTML = '';
+
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    quizTimer--;
+                    if(timerEl) timerEl.innerText = quizTimer;
+                    if (quizTimer <= 0) {
+                        clearInterval(timerInterval);
+                        errorCount++;
+                        resetCount++;
+                        alert('¡Tiempo agotado (5s)! Fallo en la evaluación. Reiniciando nivel...');
+                        document.getElementById('quiz-modal').style.display = 'none';
+                        resetLevel();
+                    }
+                }, 1000);
+
+                qObj.options.forEach((opt, index) => {
+                    let btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => {
+                        clearInterval(timerInterval);
+                        if (index === qObj.correct) {
+                            document.getElementById('quiz-modal').style.display = 'none';
+                            ammo = 5;
+                            score = 0; 
+                            correctAnswers++;
+                            points += 200 * level;
+                            isPaused = false;
+                            level++;
+                        } else {
+                            errorCount++;
+                            resetCount++;
+                            alert('¡Respuesta incorrecta! Reiniciando nivel...');
+                            document.getElementById('quiz-modal').style.display = 'none';
+                            resetLevel();
+                        }
+                    };
+                    optionsDiv.appendChild(btn);
+                });
+            }
+
+            function resetLevel() {
+                score = 0;
+                ammo = 5;
+                health = 100;
+                enemies = [];
+                bullets = [];
+                activeMedkit = null;         // Se limpia el botiquín activo al reiniciar nivel
+                medkitSpawnTimer = Date.now(); // Reinicia el temporizador de 25 segundos
+                isPaused = false;
+            }
+
+            function update() {
+                if (!gameStarted || isPaused) return;
+
+                let now = Date.now();
+                if (!activeMedkit) {
+                    if (now - medkitSpawnTimer > 25000) {
+                        spawnMedkit();
+                    }
+                } else {
+                    if (now - medkitMoveTimer > 2000) {
+                        spawnMedkit(); // Cambia de ubicación si pasan 2 segundos sin recogerse
+                    }
+                }
+
+                let moveX = 0, moveY = 0;
+                if (keys['KeyW'] || keys['ArrowUp'] || keys['w'] || keys['arrowup']) moveY -= player.speed;
+                if (keys['KeyS'] || keys['ArrowDown'] || keys['s'] || keys['arrowdown']) moveY += player.speed;
+                if (keys['KeyA'] || keys['ArrowLeft'] || keys['a'] || keys['arrowleft']) moveX -= player.speed;
+                if (keys['KeyD'] || keys['ArrowRight'] || keys['d'] || keys['arrowright']) moveX += player.speed;
+
+                player.x += moveX;
+                player.y += moveY;
+
+                player.x = Math.max(15, Math.min(canvas.width - 15, player.x));
+                player.y = Math.max(15, Math.min(canvas.height - 15, player.y));
+
+                if (activeMedkit && Math.hypot(player.x - activeMedkit.x, player.y - activeMedkit.y) < 22) {
+                    health = Math.min(100, health + 40);
+                    points += 50;
+                    activeMedkit = null;
+                    medkitSpawnTimer = Date.now();
+                }
+
+                bullets.forEach((b, index) => {
+                    b.x += b.vx;
+                    b.y += b.vy;
+
+                    enemies.forEach((e, eIndex) => {
+                        let dx = e.x - b.x;
+                        let dy = e.y - b.y;
+                        if (Math.sqrt(dx*dx + dy*dy) < e.size + 4) {
+                            bullets.splice(index, 1);
+                            e.hp--;
+
+                            if (e.hp <= 0) {
+                                enemies.splice(eIndex, 1);
+                                score++;
+                                points += 15 * level;
+
+                                if (score >= 5) {
+                                    triggerQuiz();
+                                }
+                            }
+                        }
+                    });
+                });
+
+                enemies.forEach((e) => {
+                    let dx = player.x - e.x;
+                    let dy = player.y - e.y;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    
+                    e.x += (dx / dist) * e.speed;
+                    e.y += (dy / dist) * e.speed;
+
+                    let damageRate = selectedPlatform === 'mobile' ? 0.9 : 0.7;
+                    if (dist < player.size + e.size) {
+                        health -= damageRate;
+                        if (health <= 0) {
+                            errorCount++;
+                            resetCount++;
+                            alert('¡Has perecido en combate! Reiniciando partida...');
+                            level = 1;
+                            resetLevel();
+                        }
+                    }
+                });
+
+                document.getElementById('hud-points').innerText = points;
+                document.getElementById('hud-level').innerText = level;
+                document.getElementById('hud-score').innerText = `${score}/5`;
+                document.getElementById('hud-correct').innerText = correctAnswers;
+                document.getElementById('hud-errors').innerText = errorCount;
+                document.getElementById('hud-resets').innerText = resetCount;
+                document.getElementById('hud-ammo').innerText = `${ammo}/5`;
+                document.getElementById('hud-health').innerText = `${Math.max(0, Math.floor(health))}%`;
+            }
+
+            function draw() {
+                ctx.fillStyle = '#121212';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                if (activeMedkit) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(activeMedkit.x - 10, activeMedkit.y - 10, 20, 20);
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(activeMedkit.x - 8, activeMedkit.y - 3, 16, 6);
+                    ctx.fillRect(activeMedkit.x - 3, activeMedkit.y - 8, 6, 16);
+                }
+
+                ctx.fillStyle = '#2e8b57';
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffcc00';
+                bullets.forEach(b => {
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                enemies.forEach(e => {
+                    ctx.fillStyle = e.maxHp > 1 ? '#cc2200' : '#a02020';
+                    ctx.beginPath();
+                    ctx.arc(e.x, e.y, e.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#500000';
+                    ctx.stroke();
+
+                    if (e.maxHp > 1) {
+                        ctx.fillStyle = '#ffff00';
+                        ctx.font = '9px Courier New';
+                        ctx.fillText(`HP:${e.hp}`, e.x - 12, e.y - 14);
+                    }
+                });
+            }
+
+            function loop() {
+                update();
+                draw();
+                requestAnimationFrame(loop);
+            }
+        });
+    </script>
+</body>
+</html>
